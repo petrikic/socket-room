@@ -12,8 +12,8 @@ const io = require('socket.io')(server);
 const cookie = cookieParser(SECRET);
 var store = new expressSession.MemoryStore();
 
-app.use(express.static('public'));
-app.set('views', path.join(__dirname, 'public'));
+app.use(express.static(path.join(__dirname, 'public')));
+app.set('views', path.join(__dirname, 'views'));
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'ejs');
 app.use(cookie);
@@ -42,23 +42,36 @@ io.use((socket, next) => {
     });
 });
 
-
-app.get('/*', (req, res) => {
-    console.log(`Session id: ${req.sessionID}`);
+const auth = (req, res, next) => {
     if(req.session.user){
-        return res.render('home.html');
+        next();
+    } else{
+        return res.render('login.html');
     }
-    res.render('login.html');
+}
+
+app.get('/', auth, (req, res) => {
+    console.log(`Session id: ${req.sessionID}`);
+    res.render('home.html');
 });
 
-app.post('/home', (req, res) => {
+app.post('/', (req, res) => {
     req.session.user = req.body.user;
-    res.render('home.html');
+    res.redirect('/');
+});
+
+app.get('/p/:tagId', auth, (req, res) => {
+    res.send("tagId is set to " + req.params.tagId);
+});
+
+app.use((req, res, next) => {
+    res.status(404).render('404.html');
 });
 
 io.on("connection", client => {
     var session = client.handshake.session;
     console.log(`socket conectado: ${client.id}`);
+    console.log(`Session user: ${session.user}`);
 
     client.on('sendMessage', message => {
         let value = {author: session.user, message: message};
