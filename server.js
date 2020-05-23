@@ -12,7 +12,7 @@ const io = require('socket.io')(server);
 const cookie = cookieParser(SECRET);
 var store = new expressSession.MemoryStore();
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 app.set('views', path.join(__dirname, 'public'));
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'ejs');
@@ -42,23 +42,31 @@ io.use((socket, next) => {
     });
 });
 
-app.get('/', (req, res) => {
-    //req.session.nome = "Usuario";
-    res.render('index');
+
+app.get('/*', (req, res) => {
+    console.log(`Session id: ${req.sessionID}`);
+    if(req.session.user){
+        return res.render('home.html');
+    }
+    res.render('login.html');
 });
 
-app.post('/login', (req, res) => {
-    res.send(req.body.user);
+app.post('/home', (req, res) => {
+    req.session.user = req.body.user;
+    res.render('home.html');
 });
 
 io.on("connection", client => {
-    console.log(`socket conectado: ${client.id}`);
     var session = client.handshake.session;
-    client.on('toServer', msg => {
-        msg = "<b>" + session.nome + ": </b " + msg + "<br>";
-        client.emit('toClient', msg);
-        client.broadcast.emit('toClient', msg);
-    });
+    console.log(`socket conectado: ${client.id}`);
+
+    client.on('sendMessage', message => {
+        let value = {author: session.user, message: message};
+        client.broadcast.emit('receivedMessage', value);
+        client.emit('receivedMessage', value);
+
+    })
+    
 });
 
 server.listen(3000, () =>{
