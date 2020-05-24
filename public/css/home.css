@@ -2,7 +2,7 @@ html, body {
     height: 100%;
   }
   
-  #chat {
+  .chat {
     height: 100%;
     display: flex;
     justify-content: center;
@@ -10,24 +10,3 @@ html, body {
     flex-direction: column;
   }
   
-  input {
-    width: 600px;
-    border: 1px solid #ddd;
-    height: 50px;
-    padding: 0 20px;
-    font-size: 14px;
-  }
-  
-  .button {
-    width: 600px;
-    height: 50px;
-    margin-top: 10px;
-  }
-  
-  .messages {
-    width: 600px;
-    height: 400px;
-    margin: 20px 0;
-    border: 1px solid #ddd;
-    padding: 20px;
-  }

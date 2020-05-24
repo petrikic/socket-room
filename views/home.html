@@ -5,21 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu chat</title>
 
-    <script defer="defer" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+    <script defer="defer" src="/js/jquery.min.js"></script>
     <script defer="defer" src="/socket.io/socket.io.js"></script>
     <script defer="defer" src="/js/home.js"></script>
     
     <link rel="stylesheet" href="/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/css/style.css">
+    
     <link rel="stylesheet" href="/css/home.css">
 </head>
 <body>
     <div class="container">
-        <form class="form-signin"  id="chat">
-            <div class="messages"></div>
-            <input type="text" name="message" placeholder="Digite sua mensagem">
-            <button class="btn btn-lg btn-primary btn-block button" type="submit">Enviar</button>
-        </form>
+        <button type="button" class="btn btn-primary" onclick="createRoom()" >Criar sala</button>
+        <ul id="list-rooms"></ul>
     </div>
 </body>
 </html>

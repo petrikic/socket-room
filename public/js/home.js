@@ -1,26 +1,27 @@
 var socket = io('localhost:3000');
 
-        function renderMessage(value){
-            $('.messages').append('<div class = "message"><strong>' + value.author + '</strong>: ' + value.message + '</div>');
+        const list = (value) => {
+            $("#list-rooms").append('<li><a href="/r/public/'+value+'" id="'+value+'">'+value+'</a></li>');
         }
 
-        socket.on('previousMessages', function(messages){
-            for(message of messages){
-                renderMessage(message);
+        socket.on('listRooms', rooms => {
+            for(let i = 0; i < rooms.length; i++){
+                list(rooms[i]);
             }
         });
 
-        socket.on('receivedMessage', value => {
-            renderMessage(value);
+        socket.on('closeRoom', (room) => {
+            $('#'+room).closest('li').remove();
         })
 
-        $('#chat').submit(function(event){
-            event.preventDefault();
+        socket.on('newRoom', (room) => {
+            list(room);
+        });        
 
-            var message = $('input[name = message]').val();
-            
-            if(message.length){
- 
-                socket.emit('sendMessage', message);
-            }
+        const createRoom = () => {
+            socket.emit('createRoom');
+        }
+
+        socket.on('room', (room) => {
+            window.location.href = '/r/public/' + room;
         });

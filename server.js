@@ -10,7 +10,40 @@ const app = express();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const cookie = cookieParser(SECRET);
-var store = new expressSession.MemoryStore();
+const store = new expressSession.MemoryStore();
+
+var listRooms = [];
+
+const generateSerial = () => {
+    var result, i, j;
+    result = '';
+    for(j=0; j<32; j++) {
+      if(j!=0 && j%8==0) 
+        result = result + '-';
+      i = Math.floor(Math.random()*16).toString(16).toUpperCase();
+      result = result + i;
+    }
+    return result;
+}
+
+const existsRoom = (room) => {
+    return listRooms.includes(room);
+}
+
+
+
+const createRoom = () =>{
+    let room = generateSerial();
+    listRooms.push(room);
+    return room;
+}
+
+
+const removeRoom = (room) => {
+    if(existsRoom(room)){
+        listRooms.pop(room);
+    }
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('views', path.join(__dirname, 'views'));
@@ -60,8 +93,13 @@ app.post('/', (req, res) => {
     res.redirect('/');
 });
 
-app.get('/p/:tagId', auth, (req, res) => {
-    res.send("tagId is set to " + req.params.tagId);
+app.get('/r/public/:id', auth, (req, res) => {
+    id = req.params.id;
+    if(!existsRoom(id)){
+        res.render('room-404.html');
+    } else {
+        res.render('room.html');
+    }
 });
 
 app.use((req, res, next) => {
@@ -70,15 +108,40 @@ app.use((req, res, next) => {
 
 io.on("connection", client => {
     var session = client.handshake.session;
+    let room;
     console.log(`socket conectado: ${client.id}`);
-    console.log(`Session user: ${session.user}`);
+
+    client.emit('listRooms', listRooms);
+    client.on('joinRoom', (roomName) => {
+        if(existsRoom(roomName)){
+            client.join(roomName);
+            room = roomName;
+            console.log(`O cliente ${client.id} se conectou a sala ${roomName}`);
+        }
+    });
+
+    client.on('createRoom', () =>{
+        let newRoom = createRoom();
+        client.emit('room', newRoom);
+        client.broadcast.emit('newRoom', newRoom);
+    });
 
     client.on('sendMessage', message => {
         let value = {author: session.user, message: message};
-        client.broadcast.emit('receivedMessage', value);
+        client.broadcast.to(room).emit('receivedMessage', value);
+        value.author = "Você";
         client.emit('receivedMessage', value);
 
     })
+    client.on("disconnect", () =>{
+        console.log(`socket desconectado: ${client.id}`);
+        setTimeout(() =>{
+            if(!io.sockets.adapter.rooms[room]){
+                removeRoom(room);
+                client.broadcast.emit('closeRoom', room);
+            }
+        }, 800);
+    });
     
 });
 
