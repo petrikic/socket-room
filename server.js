@@ -5,6 +5,8 @@ const cookieParser = require('cookie-parser');
 const expressSession = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
+const rooms = require('./controller/roomController');
+const user = require('./controller/userController');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -12,38 +14,6 @@ const io = require('socket.io')(server);
 const cookie = cookieParser(SECRET);
 const store = new expressSession.MemoryStore();
 
-var listRooms = [];
-
-const generateSerial = () => {
-    var result, i, j;
-    result = '';
-    for(j=0; j<32; j++) {
-      if(j!=0 && j%8==0) 
-        result = result + '-';
-      i = Math.floor(Math.random()*16).toString(16).toUpperCase();
-      result = result + i;
-    }
-    return result;
-}
-
-const existsRoom = (room) => {
-    return listRooms.includes(room);
-}
-
-
-
-const createRoom = () =>{
-    let room = generateSerial();
-    listRooms.push(room);
-    return room;
-}
-
-
-const removeRoom = (room) => {
-    if(existsRoom(room)){
-        listRooms.pop(room);
-    }
-}
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('views', path.join(__dirname, 'views'));
@@ -89,13 +59,20 @@ app.get('/', auth, (req, res) => {
 });
 
 app.post('/', (req, res) => {
-    req.session.user = req.body.user;
-    res.redirect('/');
+    usr = req.body;
+    if(req.session.user){
+        return res.redirect('/');
+    }
+    if(user.find(usr)){
+        req.session.user = usr.username
+        res.redirect('/');
+    }
+
 });
 
 app.get('/r/public/:id', auth, (req, res) => {
     id = req.params.id;
-    if(!existsRoom(id)){
+    if(!rooms.exists(id)){
         res.render('room-404.html');
     } else {
         res.render('room.html');
@@ -111,9 +88,9 @@ io.on("connection", client => {
     let room;
     console.log(`socket conectado: ${client.id}`);
 
-    client.emit('listRooms', listRooms);
+    client.emit('listRooms', rooms.list);
     client.on('joinRoom', (roomName) => {
-        if(existsRoom(roomName)){
+        if(rooms.exists(roomName)){
             client.join(roomName);
             room = roomName;
             console.log(`O cliente ${client.id} se conectou a sala ${roomName}`);
@@ -121,7 +98,7 @@ io.on("connection", client => {
     });
 
     client.on('createRoom', () =>{
-        let newRoom = createRoom();
+        let newRoom = rooms.create();
         client.emit('room', newRoom);
         client.broadcast.emit('newRoom', newRoom);
     });
@@ -137,7 +114,7 @@ io.on("connection", client => {
         console.log(`socket desconectado: ${client.id}`);
         setTimeout(() =>{
             if(!io.sockets.adapter.rooms[room]){
-                removeRoom(room);
+                rooms.remove(room);
                 client.broadcast.emit('closeRoom', room);
             }
         }, 800);
