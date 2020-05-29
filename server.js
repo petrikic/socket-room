@@ -6,14 +6,13 @@ const expressSession = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
 const rooms = require('./controller/roomController');
-const user = require('./controller/userController');
+const root = require('./routes/root');
 
 const app = express();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const cookie = cookieParser(SECRET);
 const store = new expressSession.MemoryStore();
-
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('views', path.join(__dirname, 'views'));
@@ -25,15 +24,18 @@ app.use(expressSession({
     name: KEY,
     resave: true,
     saveUninitialized: true,
+    cookie: {maxAge: 20000},
     store: store
 }));
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
+app.use('/', root);
+
 io.use((socket, next) => {
-    var data = socket.request;
+    let data = socket.request;
     cookie(data, {}, (err) =>{
-        var sessionID = data.signedCookies[KEY];
+        let sessionID = data.signedCookies[KEY];
         store.get(sessionID, (err, session) => {
             if(err || !session){
                 return next(new Error('Acesso negado!'));
@@ -43,44 +45,6 @@ io.use((socket, next) => {
             }
         });
     });
-});
-
-const auth = (req, res, next) => {
-    if(req.session.user){
-        next();
-    } else{
-        return res.render('login.html');
-    }
-}
-
-app.get('/', auth, (req, res) => {
-    console.log(`Session id: ${req.sessionID}`);
-    res.render('home.html');
-});
-
-app.post('/', (req, res) => {
-    usr = req.body;
-    if(req.session.user){
-        return res.redirect('/');
-    }
-    if(user.find(usr)){
-        req.session.user = usr.username
-        res.redirect('/');
-    }
-
-});
-
-app.get('/r/public/:id', auth, (req, res) => {
-    id = req.params.id;
-    if(!rooms.exists(id)){
-        res.render('room-404.html');
-    } else {
-        res.render('room.html');
-    }
-});
-
-app.use((req, res, next) => {
-    res.status(404).render('404.html');
 });
 
 io.on("connection", client => {
