@@ -8,7 +8,7 @@ const insertUser = (user) => {
         if(result.error){
             throw result.error;
         }
-    })
+    });
 }
 
 const deleteUser = (user) => {
